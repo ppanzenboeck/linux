@@ -31,11 +31,32 @@ for tool in "${REQUIRED_TOOLS[@]}"; do
   fi
 done
 
-log_step "Step 2: Querying Arch Linux upstream for latest release tag..."
-ARCH_REPO="https://github.com/archlinux/linux.git"
-log_info "Connecting to $ARCH_REPO..."
+# Parse flags from arguments
+FORCE=0
+for arg in "$@"; do
+  if [ "$arg" == "--force" ]; then
+    FORCE=1
+  fi
+done
 
-LATEST_TAG=$(git ls-remote --tags --sort=v:refname "$ARCH_REPO" "v*-arch*" | grep -v '\^{}' | tail -n 1 | awk '{print $2}' | sed 's#refs/tags/##' || true)
+log_step "Step 2: Querying Arch Linux upstream for latest release tag..."
+ARCH_REPO="https://github.com/archlinux/linux"
+log_info "Querying latest release from $ARCH_REPO..."
+
+# Method 1: GitHub release redirect (fastest, lightweight, avoids git-upload-pack hangs and API rate limits)
+LATEST_TAG=$(curl -sI -m 10 "${ARCH_REPO}/releases/latest" 2>/dev/null | grep -i '^location:' | sed -E 's#.*tag/([^[:space:]\r\n]+).*#\1#' | tr -d '\r\n' || true)
+
+# Method 2: GitHub API fallback
+if [ -z "$LATEST_TAG" ]; then
+  log_info "Falling back to GitHub Releases API..."
+  LATEST_TAG=$(curl -sL -m 10 "https://api.github.com/repos/archlinux/linux/releases/latest" 2>/dev/null | grep '"tag_name":' | head -n 1 | cut -d '"' -f 4 | tr -d '\r\n' || true)
+fi
+
+# Method 3: git ls-remote fallback with a strict timeout
+if [ -z "$LATEST_TAG" ]; then
+  log_info "Falling back to git ls-remote (with timeout)..."
+  LATEST_TAG=$(timeout 15 git ls-remote --tags --sort=v:refname "${ARCH_REPO}.git" "v*-arch*" 2>/dev/null | grep -v '\^{}' | tail -n 1 | awk '{print $2}' | sed 's#refs/tags/##' || true)
+fi
 
 if [ -z "$LATEST_TAG" ]; then
   log_error "Failed to retrieve release tags from $ARCH_REPO"
@@ -54,24 +75,33 @@ CURRENT_PKGVER=$(grep "^pkgver=" PKGBUILD | cut -d'=' -f2)
 log_info "Current local PKGBUILD pkgver : $CURRENT_PKGVER"
 log_info "Target upstream PKGBUILD pkgver: $PKGVER (Kernel: $KERNEL_VER)"
 
+MAJOR_VER="${KERNEL_VER%%.*}"
+TARBALL_FILE="linux-${KERNEL_VER}.tar.xz"
+TARBALL_URL="https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VER}.x/${TARBALL_FILE}"
+
+PATCH_FILE="linux-${LATEST_TAG}.patch.zst"
+PATCH_URL="https://github.com/archlinux/linux/releases/download/${LATEST_TAG}/${PATCH_FILE}"
+
 log_step "Step 3: Checking if PKGBUILD needs updating..."
-if [ "$CURRENT_PKGVER" == "$PKGVER" ] && [ "$1" != "--force" ]; then
-  log_ok "PKGBUILD is already configured for $PKGVER. No version bump needed."
-  log_info "(Pass --force to re-download files and regenerate checksums anyway)."
-else
+if [ "$CURRENT_PKGVER" != "$PKGVER" ]; then
   log_info "Updating PKGBUILD version: $CURRENT_PKGVER -> $PKGVER..."
   sed -i "s/^pkgver=.*/pkgver=$PKGVER/" PKGBUILD
   sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
   log_ok "PKGBUILD updated."
+else
+  log_ok "PKGBUILD is already configured for $PKGVER."
+fi
 
+NEEDS_DOWNLOAD=0
+if [ "$CURRENT_PKGVER" != "$PKGVER" ] || [ ! -f "$TARBALL_FILE" ] || [ ! -f "$PATCH_FILE" ] || [ $FORCE -eq 1 ]; then
+  NEEDS_DOWNLOAD=1
+fi
+
+if [ $NEEDS_DOWNLOAD -eq 0 ]; then
+  log_ok "All sources ($TARBALL_FILE, $PATCH_FILE) already exist locally. Skipping download."
+  log_info "(Pass --force to re-download files and regenerate checksums anyway)."
+else
   log_step "Step 4: Downloading kernel sources and Arch patch set..."
-  MAJOR_VER="${KERNEL_VER%%.*}"
-  TARBALL_FILE="linux-${KERNEL_VER}.tar.xz"
-  TARBALL_URL="https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VER}.x/${TARBALL_FILE}"
-  
-  PATCH_FILE="linux-${LATEST_TAG}.patch.zst"
-  PATCH_URL="https://github.com/archlinux/linux/releases/download/${LATEST_TAG}/${PATCH_FILE}"
-
   # Automatically remove obsolete kernel tarballs and patches from older versions
   for old_tar in linux-*.tar.xz; do
     if [ "$old_tar" != "$TARBALL_FILE" ] && [ -f "$old_tar" ]; then
@@ -86,7 +116,7 @@ else
     fi
   done
 
-  if [ -f "$TARBALL_FILE" ]; then
+  if [ -f "$TARBALL_FILE" ] && [ $FORCE -eq 0 ]; then
     log_ok "$TARBALL_FILE already exists locally ($(du -h "$TARBALL_FILE" | cut -f1)). Skipping download."
   else
     log_info "Downloading $TARBALL_FILE from $TARBALL_URL..."
@@ -94,7 +124,7 @@ else
     log_ok "Downloaded $TARBALL_FILE successfully."
   fi
 
-  if [ -f "$PATCH_FILE" ]; then
+  if [ -f "$PATCH_FILE" ] && [ $FORCE -eq 0 ]; then
     log_ok "$PATCH_FILE already exists locally ($(du -h "$PATCH_FILE" | cut -f1)). Skipping download."
   else
     log_info "Downloading $PATCH_FILE from $PATCH_URL..."
@@ -159,8 +189,8 @@ echo -e "\033[0;32m  Update Check Completed Successfully! \033[0m"
 echo "========================================================"
 BUILD_ARGS=()
 for arg in "$@"; do
-  if [ "$arg" == "--install" ]; then
-    BUILD_ARGS+=("--install")
+  if [ "$arg" == "--install" ] || [ "$arg" == "--fallback" ]; then
+    BUILD_ARGS+=("$arg")
   fi
 done
 
