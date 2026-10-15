@@ -1,0 +1,17 @@
+# Kernel release tarballs and compressed patches
+*.tar.xz
+*.tar.gz
+*.patch.zst
+
+# makepkg work and output directories
+/src/
+/pkg/
+/output/
+*.pkg.tar.zst
+*.pkg.tar.xz
+
+# Reference full kernel git clone used for validation
+/linux-git/
+
+# Temporary and log files
+*.log

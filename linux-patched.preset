@@ -1,0 +1,15 @@
+# mkinitcpio preset file for the 'linux-patched' package
+
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-patched"
+
+# By default, only generate standard initramfs to preserve /boot disk space.
+# Use './install.sh --fallback' to enable the fallback image.
+PRESETS=('default')
+
+default_config="/etc/mkinitcpio.conf"
+default_image="/boot/initramfs-linux-patched.img"
+
+fallback_config="/etc/mkinitcpio.conf"
+fallback_image="/boot/initramfs-linux-patched-fallback.img"
+fallback_options="-S autodetect"
