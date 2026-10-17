@@ -29,6 +29,7 @@ A complete, automated toolchain to compile the latest mainline Arch Linux kernel
 ├── build.sh               # 1-click script to compile the kernel
 ├── update.sh              # Upstream sync tool (fetches latest Arch Linux releases)
 ├── install.sh             # Automatic pacman + mkinitcpio + bootloader installer
+├── publish.sh             # Deploys packages and pacman db to GitHub Releases
 └── check-patch-status.sh  # Quick status checker against hid.git and mainline
 ```
 
@@ -46,14 +47,38 @@ A complete, automated toolchain to compile the latest mainline Arch Linux kernel
 ./install.sh
 ```
 
-### 3. Update to Future Kernel Releases
+### 3. Deploy to Your Own Pacman Repository (GitHub Releases)
+To share pre-compiled packages with your other laptops, desktops, or friends:
+```bash
+./publish.sh
+```
+Or build and publish in one command:
+```bash
+./build.sh --publish
+```
+
+### 4. Subscribe to the Repository from Any Machine
+Add these 3 lines to the bottom of `/etc/pacman.conf` on any Arch Linux machine:
+```ini
+[panz]
+SigLevel = Optional TrustAll
+Server = https://github.com/ppanzenboeck/linux/releases/download/packages
+```
+Then update your kernel anytime alongside official packages:
+```bash
+sudo pacman -Syu linux-patched linux-patched-headers
+```
+
+---
+
+### 5. Update to Future Kernel Releases
 Whenever Arch Linux releases a new kernel version (e.g. 7.2.11, 7.3, 7.4):
 ```bash
 # Update PKGBUILD and verify patches:
 ./update.sh
 
-# Or update, compile, and install in a single command:
-./update.sh --build --install
+# Or update, compile, and publish in a single command:
+./update.sh --build --publish
 ```
 
 ---

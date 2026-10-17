@@ -103,6 +103,14 @@ echo "Next Steps to Install on your Machine:"
 echo "• Run the all-in-one automatic installer (handles pacman + mkinitcpio + bootloader):"
 echo "   ./install.sh"
 echo ""
+echo "• Or publish to your GitHub Releases Pacman repository:"
+echo "   ./publish.sh"
+echo ""
+
+if [[ " $* " == *" --publish "* ]]; then
+  log_step "Proceeding directly to repository publishing (--publish requested)..."
+  ./publish.sh
+fi
 
 if [[ " $* " == *" --install "* ]]; then
   INSTALL_ARGS=()

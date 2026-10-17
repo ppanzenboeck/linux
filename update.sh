@@ -189,12 +189,12 @@ echo -e "\033[0;32m  Update Check Completed Successfully! \033[0m"
 echo "========================================================"
 BUILD_ARGS=()
 for arg in "$@"; do
-  if [ "$arg" == "--install" ] || [ "$arg" == "--fallback" ]; then
+  if [ "$arg" == "--install" ] || [ "$arg" == "--fallback" ] || [ "$arg" == "--publish" ]; then
     BUILD_ARGS+=("$arg")
   fi
 done
 
-if [[ " $* " == *" --build "* ]] || [[ " $* " == *" --install "* ]]; then
+if [[ " $* " == *" --build "* ]] || [[ " $* " == *" --install "* ]] || [[ " $* " == *" --publish "* ]]; then
   log_step "Proceeding directly to compilation..."
   ./build.sh "${BUILD_ARGS[@]}"
 else
@@ -204,6 +204,9 @@ else
   echo "Or to compile AND install automatically in one step:"
   echo "   ./build.sh --install"
   echo ""
-  echo "Or for full update + compile + install next time:"
-  echo "   ./update.sh --build --install"
+  echo "Or to compile AND publish to GitHub Releases Pacman repo:"
+  echo "   ./build.sh --publish"
+  echo ""
+  echo "Or full update + compile + publish:"
+  echo "   ./update.sh --build --publish"
 fi
