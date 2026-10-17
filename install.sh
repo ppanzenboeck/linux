@@ -13,9 +13,12 @@ log_error() { echo -e "\033[0;31m[ERROR]\033[0m $*"; }
 trap 'log_error "Installation failed at line $LINENO: $BASH_COMMAND"' ERR
 
 ENABLE_FALLBACK=0
+BOOTLOADER_ONLY=0
 for arg in "$@"; do
   if [ "$arg" == "--fallback" ]; then
     ENABLE_FALLBACK=1
+  elif [ "$arg" == "--bootloader-only" ]; then
+    BOOTLOADER_ONLY=1
   fi
 done
 
@@ -30,30 +33,44 @@ else
   log_info "Fallback mode DISABLED (default). Only standard initramfs will be built."
 fi
 
-# Select ONLY the latest version of the kernel package
-LATEST_KERNEL=$(ls -1v "$OUTPUT_DIR"/linux-patched-[0-9]*.pkg.tar.zst 2>/dev/null | tail -n 1 || true)
+if [ $BOOTLOADER_ONLY -eq 1 ]; then
+  log_info "Bootloader-only mode requested. Skipping package installation."
+else
+  # Check if local compiled packages exist in output/
+  LATEST_KERNEL=$(ls -1v "$OUTPUT_DIR"/linux-patched-[0-9]*.pkg.tar.zst 2>/dev/null | tail -n 1 || true)
 
-if [ -z "$LATEST_KERNEL" ] || [ ! -f "$LATEST_KERNEL" ]; then
-  log_error "No compiled kernel package found in $OUTPUT_DIR!"
-  echo "Please compile first by running: ./build.sh"
-  exit 1
+  if [ -n "$LATEST_KERNEL" ] && [ -f "$LATEST_KERNEL" ]; then
+    log_step "Step 1: Installing latest locally compiled kernel package(s)..."
+    PKGS=("$LATEST_KERNEL")
+    LATEST_HEADERS=$(ls -1v "$OUTPUT_DIR"/linux-patched-headers-[0-9]*.pkg.tar.zst 2>/dev/null | tail -n 1 || true)
+    if [ -n "$LATEST_HEADERS" ] && [ -f "$LATEST_HEADERS" ]; then
+      PKGS+=("$LATEST_HEADERS")
+    fi
+    for p in "${PKGS[@]}"; do
+      log_info "  -> $(basename "$p")"
+    done
+    sudo pacman -U --noconfirm "${PKGS[@]}"
+    log_ok "Local kernel package(s) installed."
+  else
+    log_step "Step 1: No local build artifacts found; using Pacman repository..."
+    
+    # Check if [panz] repository is configured in /etc/pacman.conf
+    if ! grep -q "^\[panz\]" /etc/pacman.conf 2>/dev/null; then
+      log_info "Adding [panz] repository to /etc/pacman.conf..."
+      sudo bash -c 'cat >> /etc/pacman.conf' << 'EOF'
+
+[panz]
+SigLevel = Optional TrustAll
+Server = https://github.com/ppanzenboeck/linux/releases/download/packages
+EOF
+      log_ok "[panz] repository added to /etc/pacman.conf."
+    fi
+
+    log_info "Installing linux-patched and linux-patched-headers via pacman..."
+    sudo pacman -Sy --noconfirm linux-patched linux-patched-headers
+    log_ok "Repository kernel package(s) installed."
+  fi
 fi
-
-PKGS=("$LATEST_KERNEL")
-
-# Also select matching/latest headers package if available
-LATEST_HEADERS=$(ls -1v "$OUTPUT_DIR"/linux-patched-headers-[0-9]*.pkg.tar.zst 2>/dev/null | tail -n 1 || true)
-if [ -n "$LATEST_HEADERS" ] && [ -f "$LATEST_HEADERS" ]; then
-  PKGS+=("$LATEST_HEADERS")
-fi
-
-log_step "Step 1: Installing latest kernel package(s)..."
-for p in "${PKGS[@]}"; do
-  log_info "  -> $(basename "$p")"
-done
-
-sudo pacman -U --noconfirm "${PKGS[@]}"
-log_ok "Kernel package(s) installed."
 
 log_step "Step 2: Configuring mkinitcpio presets..."
 PRESET_FILE="/etc/mkinitcpio.d/linux-patched.preset"

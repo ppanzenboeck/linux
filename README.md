@@ -57,17 +57,29 @@ Or build and publish in one command:
 ./build.sh --publish
 ```
 
-### 4. Subscribe to the Repository from Any Machine
-Add these 3 lines to the bottom of `/etc/pacman.conf` on any Arch Linux machine:
-```ini
-[panz]
-SigLevel = Optional TrustAll
-Server = https://github.com/ppanzenboeck/linux/releases/download/packages
-```
-Then update your kernel anytime alongside official packages:
+### 4. Install on Any Other Machine (or Share with Friends)
+
+You have two easy ways to set up secondary machines:
+
+**Option A (1-Command Automatic Setup)**:
+Clone this repository on the machine and run:
 ```bash
-sudo pacman -Syu linux-patched linux-patched-headers
+./install.sh
 ```
+If no local build files exist, `install.sh` automatically adds the `[panz]` repository to `/etc/pacman.conf`, installs `linux-patched`, and sets up your **systemd-boot** or **GRUB** entry!
+
+**Option B (Manual Setup)**:
+1. Add these 3 lines to `/etc/pacman.conf`:
+   ```ini
+   [panz]
+   SigLevel = Optional TrustAll
+   Server = https://github.com/ppanzenboeck/linux/releases/download/packages
+   ```
+2. Install the packages:
+   ```bash
+   sudo pacman -Syu linux-patched linux-patched-headers
+   ```
+3. Set up the bootloader entry (systemd-boot: create `/boot/loader/entries/linux-patched.conf`; GRUB: `sudo grub-mkconfig -o /boot/grub/grub.cfg`). All future kernel updates via `pacman -Syu` are then 100% automatic.
 
 ---
 
