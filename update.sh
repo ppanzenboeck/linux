@@ -33,9 +33,12 @@ done
 
 # Parse flags from arguments
 FORCE=0
+CHECK_PATCHES=0
 for arg in "$@"; do
   if [ "$arg" == "--force" ]; then
     FORCE=1
+  elif [ "$arg" == "--check-patches" ]; then
+    CHECK_PATCHES=1
   fi
 done
 
@@ -83,6 +86,17 @@ PATCH_FILE="linux-${LATEST_TAG}.patch.zst"
 PATCH_URL="https://github.com/archlinux/linux/releases/download/${LATEST_TAG}/${PATCH_FILE}"
 
 log_step "Step 3: Checking if PKGBUILD needs updating..."
+if [ "$CURRENT_PKGVER" == "$PKGVER" ] && [ -f "$TARBALL_FILE" ] && [ -f "$PATCH_FILE" ] && [ $FORCE -eq 0 ] && [ $CHECK_PATCHES -eq 0 ]; then
+  log_ok "PKGBUILD is already at the latest upstream version ($PKGVER)."
+  log_ok "All sources ($TARBALL_FILE, $PATCH_FILE) exist locally."
+  echo ""
+  echo "========================================================"
+  log_ok "Already fully up to date! Nothing to update."
+  echo "========================================================"
+  log_info "Tip: Pass --force or --check-patches if you want to re-verify patches anyway."
+  exit 0
+fi
+
 if [ "$CURRENT_PKGVER" != "$PKGVER" ]; then
   log_info "Updating PKGBUILD version: $CURRENT_PKGVER -> $PKGVER..."
   sed -i "s/^pkgver=.*/pkgver=$PKGVER/" PKGBUILD
