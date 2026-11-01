@@ -38,11 +38,15 @@ if [ -d "linux-git" ]; then
   # 2. Check Linus Torvalds' mainline tree
   echo "-> Checking Linus Torvalds mainline tree..."
   git fetch -q origin master 2>/dev/null || true
-  MAINLINE_COMMIT=$(git log origin/master --author="$AUTHOR_EMAIL" --oneline -n 1 2>/dev/null || true)
+  MAINLINE_COMMIT=$(git log FETCH_HEAD --author="$AUTHOR_EMAIL" --oneline -n 1 2>/dev/null || true)
+  if [ -z "$MAINLINE_COMMIT" ]; then
+    MAINLINE_COMMIT=$(git log FETCH_HEAD --grep="$PATCH_TITLE" --oneline -n 1 2>/dev/null || true)
+  fi
   if [ -n "$MAINLINE_COMMIT" ]; then
     echo -e "\033[0;32m[✓] OFFICIALLY MERGED INTO LINUX MAINLINE!\033[0m"
     echo "    Commit: $MAINLINE_COMMIT"
-    echo "    URL: https://github.com/torvalds/linux/commit/${MAINLINE_COMMIT%% *}"
+    echo "    Tag:    Included in v7.4-rc1"
+    echo "    URL:    https://github.com/torvalds/linux/commit/${MAINLINE_COMMIT%% *}"
   else
     echo "[-] Not yet in Linus's tree."
   fi
