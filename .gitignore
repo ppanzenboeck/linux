@@ -15,3 +15,4 @@
 
 # Temporary and log files
 *.log
+/temp/
