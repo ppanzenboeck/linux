@@ -5,7 +5,7 @@ pkgname=(
   "$pkgbase"
   "$pkgbase-headers"
 )
-pkgver=7.2.15.arch1
+pkgver=7.3.4.arch1
 pkgrel=1
 pkgdesc='Linux kernel compiled with custom touchpad patches for ASUS E200HA'
 url='https://github.com/archlinux/linux'
@@ -47,8 +47,8 @@ source=(
   linux-patched.preset
 )
 
-b2sums=('a1d1a6572667dfd75f7dde083a8d461db98e08bbc67cdd395e2d73a422ee487bd14392ce69b9511c386b63d9c3c02255978a33149278d6e3bace35937ceda495'
-        '67c3a12310872c288ee5c6681fcd3f956103da1a7cf67f97a0bc2a1c2bfea6c4d7f916250eee79088d3e5c74e2e85a6145b3a605ed7527990c95e69454a9a455'
+b2sums=('9b75f615d0a03d6627d7e3db4397882d602161db13cd5efd6226e0e5c5f970d1baea676d9d01edd0f09ed0b7207b6421e6340f1b8e9bd4e8152491ddddcc9021'
+        'b68e45a3a00532ae7719d5febc5cf487712f7290b2bba60e5bc5fdd693b7477693823f79ea8e9a27dbc66da7bf6c0cbd6cbcfb52a1b420a8d800ec64982a9d09'
         '53a7ef5bba888f06edae13c6734bde853d675e8298eb8aeea8c13744f8f9d4dd804994ea9cb6ca56ac3153d70792fecddecca23e1525be0551c14590d628b322'
         '05f71c70e82f3e320645067c5d42af00fa3b516316766dcf56bb61981b9b45de5b87cbe02441fff0189adbf8928a9a919553e44c79c59e1aed9ca54de0bd194c')
 
